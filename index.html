@@ -265,7 +265,7 @@
     </div>
 
     <div id="game-header">
-        <p id="instructions">Come la **manzana** si la respuesta es **Verdadero**, o el **ratón** si es **Falso**.</p>
+        <p id="instructions">Come el **círculo rojo** si la respuesta es **Verdadero**, o el **cuadrado gris** si es **Falso**.</p>
         <div id="score-level-bar">
             <p id="student-name-display"></p> <p id="score">Puntaje: 0</p>
             <p id="level">Nivel: 1</p>
@@ -285,7 +285,8 @@
 
     <div id="question-overlay">
         <p id="overlay-question-text"></p>
-        <p id="overlay-timer-text"></p> </div>
+        <p id="overlay-timer-text"></p>
+    </div>
 
     <p id="current-question-display"></p>
 
@@ -424,7 +425,7 @@
                     { texto: "¿La 'caverna negra' que se agranda dentro del cuerpo de Castel al final del libro, puede interpretarse como la consumación de su aislamiento, liberándolo de las expectativas de conexión con el mundo exterior?", respuesta: true },
                     { texto: "¿La incapacidad de Castel para razonar sobre la palabra 'insensato' del ciego al final del libro señala una resistencia a la autocrítica que, en su lógica distorsionada, le permite mantener su visión de la realidad sin cuestionar su propia culpabilidad?", respuesta: true },
                     { texto: "¿El hecho de que Castel siga pintando en el encierro significa que ha encontrado una forma de redención o de escapar de su tormento interno?", respuesta: false },
-                    { texto: "¿El final del libro implica una resolución clara de los conflictos de Castel y una comprensión de su destino por parte del lector?", respuesta: false },
+                    { texto: "¿El final del libro implica una resolución clara de los conflictos de Castel y una comprensión de su destino por parte del lectorStamped:false}", respuesta: false },
                     { texto: "¿El tema central del libro, tal como se infiere del fragmento final, es el amor romántico y la búsqueda de la felicidad en una relación de pareja?", respuesta: false }
                 ]
             },
@@ -490,7 +491,7 @@
                     { texto: "¿Nadia logró salir del campamento sin ser vista por los soldados?", respuesta: true },
                     { texto: "¿Walimaí liberó a Alexander de las ataduras con una navaja?", respuesta: true },
                     { texto: "¿La Bestia atacó físicamente al capitán Ariosto con sus garras?", respuesta: true },
-                    { texto: "¿Los soldados fueron testigos conscientes del ataque de las Bestias?", respuesta: false },
+                    { texto: "¿Los soldados fueron testigos conscientes del ataque de las BestiasStamped:false}", respuesta: false },
                     { texto: "¿Iyomi dio permiso para que la tribu se vacunara?", respuesta: true },
                     { texto: "¿Los indígenas sabían que los frascos contenían un virus antes de que murieran algunos?", respuesta: false },
                     { texto: "¿La presencia de Nadia ayudó a mejorar la comunicación entre los nahab y los indígenas?", respuesta: true },
@@ -528,12 +529,12 @@
         const box = 20;
         let snake = [];
         let direction = null;
-        let food = {};
-        let rat = {};
+        let food = {}; // Manzana (Verdadero)
+        let rat = {}; // Ratón (Falso)
         let score = 0;
         let level = 1;
-        let gameSpeed = 150;
-        let gameInterval;
+        let gameSpeed = 200; // Velocidad inicial más lenta (antes 150)
+        // let gameInterval; // Usaremos requestAnimationFrame en su lugar, pero mantenemos para claridad (Ya no es necesario)
         let selectedGradeQuestions = {}; // Almacenará las preguntas del grado seleccionado
 
         let currentLevelQuestions = [];
@@ -541,7 +542,13 @@
         let currentQuestion = null;
 
         let gamePausedForQuestion = true;
-        let overlayQuestionTimer;
+        let overlayQuestionTimerInterval; // Para el temporizador de la pregunta en el overlay
+        let overlayTimeLeft = 0; // Segundos restantes para el overlay de pregunta
+        const OVERLAY_QUESTION_DURATION = 8; // Duración en segundos del overlay de pregunta
+
+        let animationFrameId; // Para requestAnimationFrame
+        let lastFrameTime = 0; // Para controlar la velocidad de requestAnimationFrame
+        let targetFrameRate; // Se calculará dinámicamente
 
         const QUESTIONS_TO_LEVEL_UP = 3; // Cuántas preguntas correctas para subir de nivel
         let questionsCorrectInCycle = 0;
@@ -554,12 +561,8 @@
         let studentName = "";
         let segmentsToAdd = 0;
 
-        // --- IMÁGENES INCRUSTADAS EN BASE64 (Manzana y Ratón) ---
-        const manzanaImg = new Image();
-        manzanaImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANlBMVEVHcEyZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZlHh+gMAAAAC3RSTlMA652f1P1W+1e2gqCBAAAAIklEQVQY02NgIAgA7QY0gM3kIIDZgAMoG2sYyCAjA7A3MLDQAaZgJGBgYGLkYQJkYGJmYWJlY2BnYuFhY2BgZGVj4GAF/g4uXj5+AUGBgUFBISFhoWAQERERBQSFRURFR0TGJgYGxiamphZWAQEBAUJCw0LDxCYmJmcXFxdnby+oAC9JmB8wXgAAAAAElFTkSuQmCC';
-
-        const ratonImg = new Image();
-        ratonImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANlBMVEVHcEyZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZlHh+gMAAAAC3RSTlMA652f1P1W+1e2gqCBAAAAIklEQVQY02NgIAgA7QY0gM3kIIDZgAMoG2sYyCAjA7A3MLDQAaZgJGBgYGLkYQJkYGJmYWJlY2BnYuFhY2BgZGVj4GAF/g4uXj5+AUGBgUFBISFhoWAQERERBQSFRURFR0TGJgYGxiamphZWAQEBAUJCw0LDxCYmJmcXFxdnby+oAC9JmB8wXgAAAAAElFTkSuQmCC';
+        // Cola de movimientos para manejar entradas rápidas
+        let moveQueue = [];
 
         // --- FUNCIONES DE UTILIDAD ---
         function randomPosition() {
@@ -594,8 +597,8 @@
         // --- INICIALIZACIÓN DEL JUEGO ---
         function initGame() {
             console.log("--- INICIO: Iniciando Juego ---");
-            clearInterval(gameInterval);
-            clearInterval(overlayQuestionTimer);
+            stopAnimationFrameLoop(); // Detener cualquier bucle de animación previo
+            clearInterval(overlayQuestionTimerInterval); // Limpiar cualquier temporizador de overlay
 
             const selectedGrade = gradeSelection.value;
             selectedGradeQuestions = {};
@@ -605,17 +608,19 @@
             }
 
             snake = [{ x: 9 * box, y: 10 * box }];
-            direction = null;
+            direction = null; // Reinicia la dirección para que se establezca al primer input
+            moveQueue = []; // Limpiar la cola de movimientos
             score = 0;
             level = 1;
-            gameSpeed = 150;
+            gameSpeed = 200; // Velocidad inicial más lenta (antes 150)
+            targetFrameRate = 1000 / (1000 / gameSpeed); // Recalcular targetFrameRate
             questionsCorrectInCycle = 0;
             questionsAnsweredInCycle = 0;
             segmentsToAdd = 0;
             currentQuestion = null;
             food = {};
             rat = {};
-            gamePausedForQuestion = true;
+            gamePausedForQuestion = true; // Asegurarse de que esté pausado al inicio para mostrar instrucciones
             shouldPresentNewQuestion = false;
 
             scoreDisplay.innerText = "Puntaje: " + score;
@@ -644,7 +649,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let i = 0; i < snake.length; i++) {
                 ctx.fillStyle = i === 0 ? "lime" : "green";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.fillRect(snake[i].x, snake[i].y, box, box); // Ojo: Aquí debería ser x, y. Corregido en draw().
             }
         }
 
@@ -658,7 +663,7 @@
             gameOverScreen.style.display = "none";
             // Asegurarse de que los controles táctiles estén ocultos aquí inicialmente
             // La media query se encargará de mostrarlos si es una pantalla pequeña
-            document.getElementById('touch-controls').style.display = 'none';
+            document.getElementById('touch-controls').style.display = 'none'; // Se oculta por defecto en CSS, pero aseguramos.
 
             startGameButton.addEventListener('click', startGame);
             studentNameInput.addEventListener('keypress', (event) => {
@@ -681,12 +686,18 @@
 
         // Función para manejar el inicio del juego desde cualquier input (teclado o táctil)
         function handleGameStartFromInput(inputDirection) {
-            // Solo ejecuta si el juego está en pausa por la pantalla de inicio
+            // Solo ejecuta si el juego está en pausa por la pantalla de inicio y el listener está activo
             if (gamePausedForQuestion && initialKeyPressHandlerRegistered) {
                 console.log(`EVENTO: Input "${inputDirection}" recibido para iniciar juego.`);
 
                 // Desactivar el listener una vez que el juego ha empezado
                 document.removeEventListener('keydown', initialGameStartListener);
+                // También quitar listeners de botones táctiles para que no activen esta parte del código nuevamente
+                upButton.removeEventListener('click', initialTouchStartHandler);
+                downButton.removeEventListener('click', initialTouchStartHandler);
+                leftButton.removeEventListener('click', initialTouchStartHandler);
+                rightButton.removeEventListener('click', initialTouchStartHandler);
+
 
                 initialKeyPressHandlerRegistered = false; // Marcar que ya se ha iniciado
 
@@ -698,12 +709,26 @@
                 setTimeout(() => {
                     questionOverlay.style.display = "none";
                     console.log("ESTADO: Instrucciones iniciales ocultas. Preparando primera pregunta.");
+
+                    gamePausedForQuestion = false; // El juego NO está pausado para que se mueva la serpiente.
                     loadLevelQuestionsForCurrentLevel(); // Cargar preguntas para el nivel 1
-                    shouldPresentNewQuestion = true; // Indicar que se debe presentar una nueva pregunta
-                    checkAndPresentQuestion(); // Proceder con la lógica de la pregunta
+                    presentQuestion(); // Presentar la primera pregunta y colocar la comida
+
                 }, 500); // Esperar a que termine la animación
             }
         }
+
+        // Handler para el inicio del juego con botones táctiles
+        const initialTouchStartHandler = (event) => {
+            const buttonId = event.currentTarget.id;
+            let dir;
+            if (buttonId === 'up-button') dir = 'UP';
+            else if (buttonId === 'down-button') dir = 'DOWN';
+            else if (buttonId === 'left-button') dir = 'LEFT';
+            else if (buttonId === 'right-button') dir = 'RIGHT';
+            if (dir) handleGameStartFromInput(dir);
+        };
+
 
         function showInitialInstructions() {
             console.log("ESTADO: Mostrando instrucciones iniciales. Juego pausado.");
@@ -715,8 +740,8 @@
             overlayQuestionText.innerHTML = `
                 <h2>¡Hola, ${studentName}!</h2>
                 <p>Tu misión es guiar a la serpiente para que coma la respuesta correcta.</p>
-                <p>Come la **manzana** si la respuesta es **Verdadero**.</p>
-                <p>Come el **ratón** si es **Falso**.</p>
+                <p>Come el **círculo rojo** si la respuesta es **Verdadero**.</p>
+                <p>Come el **cuadrado gris** si es **Falso**.</p>
                 <p>Responde ${QUESTIONS_TO_LEVEL_UP} preguntas para subir de nivel. ¡Cuidado, el juego se acelera!</p>
                 <p>Evita chocar con las paredes o contigo mismo.</p>
                 <p>¡Presiona **cualquier tecla de flecha** o **toca un botón de dirección** para empezar!</p>
@@ -729,292 +754,329 @@
             if (!initialKeyPressHandlerRegistered) {
                 initialGameStartListener = (event) => {
                     if (event.key.startsWith("Arrow")) {
-                        setSnakeDirection(event.key.replace('Arrow', '').toUpperCase());
+                        handleGameStartFromInput(event.key.replace('Arrow', '').toUpperCase());
                     }
                 };
                 document.addEventListener('keydown', initialGameStartListener);
                 initialKeyPressHandlerRegistered = true;
+
+                // Registrar listeners para botones táctiles para el inicio del juego
+                upButton.addEventListener('click', initialTouchStartHandler);
+                downButton.addEventListener('click', initialTouchStartHandler);
+                leftButton.addEventListener('click', initialTouchStartHandler);
+                rightButton.addEventListener('click', initialTouchStartHandler);
+
                 console.log("EVENTO: Listeners para inicio de juego (teclado/táctil) configurados.");
             }
         }
 
         function loadLevelQuestionsForCurrentLevel() {
             console.log(`PREGUNTAS: Cargando preguntas para Nivel ${level} del grado ${gradeSelection.value}.`);
+            // Asegurarse de que se utiliza una copia de las preguntas para que se puedan eliminar
             currentLevelQuestions = selectedGradeQuestions[level] ? [...selectedGradeQuestions[level]] : [];
+
             if (currentLevelQuestions.length === 0) {
-                console.warn(`PREGUNTAS: Advertencia: Nivel ${level} del grado ${gradeSelection.value} no tiene preguntas o está vacío.`);
+                console.warn(`PREGUNTAS: No hay preguntas para el Nivel ${level} del grado ${gradeSelection.value}.`);
+                // Considerar qué hacer si no hay más preguntas para este nivel o grado
+                // Por ejemplo, terminar el juego con un mensaje de victoria o avanzar al siguiente grado/nivel
+                endGame(true); // Terminar el juego con victoria si se acaban las preguntas
             }
-            console.log(`PREGUNTAS: Preguntas cargadas para Nivel ${level}: ${currentLevelQuestions.length} preguntas disponibles.`);
+        }
+
+
+        // --- LÓGICA DE PREGUNTAS Y RESPUESTAS ---
+        function presentQuestion() {
+            clearInterval(overlayQuestionTimerInterval); // Asegurarse de limpiar cualquier temporizador anterior
+
+            if (currentLevelQuestions.length === 0) {
+                console.log("PREGUNTAS: No hay más preguntas disponibles en este nivel. Avanzando de nivel o terminando juego.");
+                if (level < Object.keys(selectedGradeQuestions).length) {
+                    levelUp();
+                    // Después de levelUp, se llamará a presentQuestion de nuevo
+                    return;
+                } else {
+                    endGame(true); // Todas las preguntas de todos los niveles del grado han sido respondidas
+                    return;
+                }
+            }
+
+            const randomIndex = Math.floor(Math.random() * currentLevelQuestions.length);
+            currentQuestion = currentLevelQuestions[randomIndex];
+
+            console.log(`PREGUNTAS: Presentando pregunta en overlay: "${currentQuestion.texto}" (Respuesta: ${currentQuestion.respuesta ? 'Verdadero' : 'Falso'})`);
+
+            // Mostrar la pregunta en el overlay grande
+            overlayQuestionText.innerText = currentQuestion.texto;
+            overlayTimeLeft = OVERLAY_QUESTION_DURATION;
+            overlayTimerText.innerText = `Tiempo: ${overlayTimeLeft}s`;
+            questionOverlay.classList.remove('slide-out');
+            questionOverlay.style.transform = 'translate(-50%, -50%)';
+            questionOverlay.style.opacity = '1';
+            questionOverlay.style.display = "flex"; // Mostrar el overlay
+
+            // Pausar el juego explícitamente mientras se muestra la pregunta en el overlay
+            gamePausedForQuestion = true;
+            stopAnimationFrameLoop(); // Detener el movimiento de la serpiente
+
+            // Iniciar el temporizador para el overlay
+            overlayQuestionTimerInterval = setInterval(() => {
+                overlayTimeLeft--;
+                overlayTimerText.innerText = `Tiempo: ${overlayTimeLeft}s`;
+
+                if (overlayTimeLeft <= 0) {
+                    clearInterval(overlayQuestionTimerInterval);
+                    console.log("PREGUNTAS: Tiempo de overlay de pregunta terminado.");
+
+                    // Ocultar el overlay con animación
+                    questionOverlay.classList.add('slide-out');
+                    setTimeout(() => {
+                        questionOverlay.style.display = "none";
+                    }, 500); // Esperar a que la animación termine
+
+                    // Copiar la pregunta al display inferior y reanudar el juego
+                    currentQuestionDisplay.innerText = currentQuestion.texto;
+                    gamePausedForQuestion = false; // Reanudar el juego
+                    startAnimationFrameLoop(); // Iniciar o reanudar el bucle de animación
+                }
+            }, 1000); // Cada segundo
+
+            placeFoodAndRat(currentQuestion.respuesta);
+        }
+
+        function placeFoodAndRat(correctAnswerIsTrue) {
+            food = randomPosition(); // Manzana (Verdadero)
+            rat = randomPosition(); // Ratón (Falso)
+
+            // Asegurarse de que la manzana y el ratón no se superpongan
+            while (food.x === rat.x && food.y === rat.y) {
+                rat = randomPosition();
+            }
+
+            console.log(`COMIDA: Manzana en (${food.x},${food.y}), Ratón en (${rat.x},${rat.y}).`);
+        }
+
+        function checkAnswer(eatenItemIsFood) {
+            console.log(`RESPUESTA: Serpiente comió ${eatenItemIsFood ? 'manzana (Verdadero)' : 'ratón (Falso)'}.`);
+            const isCorrect = (eatenItemIsFood === currentQuestion.respuesta);
+
+            if (isCorrect) {
+                score += 10;
+                questionsCorrectInCycle++;
+                segmentsToAdd++; // Añadir un segmento por respuesta correcta
+                console.log("RESPUESTA: ¡Correcto! Puntaje:", score);
+            } else {
+                score = Math.max(0, score - 5); // Penalizar si es incorrecto, no bajar de 0
+                console.log("RESPUESTA: Incorrecto. Puntaje:", score);
+            }
+            questionsAnsweredInCycle++;
+            scoreDisplay.innerText = "Puntaje: " + score;
+
+            // Eliminar la pregunta ya respondida
+            const answeredQuestionIndex = currentLevelQuestions.findIndex(q => q.texto === currentQuestion.texto);
+            if (answeredQuestionIndex > -1) {
+                currentLevelQuestions.splice(answeredQuestionIndex, 1);
+                console.log("PREGUNTAS: Pregunta eliminada. Preguntas restantes en nivel:", currentLevelQuestions.length);
+            }
+
+            food = {}; // Quitar la comida del tablero
+            rat = {};
+
+            gamePausedForQuestion = true; // Pausar el juego para la siguiente pregunta
+            shouldPresentNewQuestion = true;
+            checkAndPresentQuestion();
         }
 
         function checkAndPresentQuestion() {
-            console.log("--- FLUJO: checkAndPresentQuestion() llamado ---");
-            clearInterval(gameInterval); // Pausar el juego
-            console.log(`ESTADO: Juego pausado para la pregunta. gamePausedForQuestion=${gamePausedForQuestion}, shouldPresentNewQuestion=${shouldPresentNewQuestion}`);
-
-            // Lógica para subir de nivel
-            if (questionsAnsweredInCycle >= QUESTIONS_TO_LEVEL_UP) {
-                const nextLevel = level + 1;
-                console.log(`NIVEL: Condición de nivel cumplida. Intentando subir a Nivel ${nextLevel}.`);
-                if (selectedGradeQuestions[nextLevel] && selectedGradeQuestions[nextLevel].length > 0) {
-                    level = nextLevel;
-                    levelDisplay.innerText = "Nivel: " + level;
-                    gameSpeed = Math.max(50, gameSpeed - 20); // AUMENTO DE VELOCIDAD AJUSTADO AQUÍ (antes -30, ahora -20)
-                    questionsCorrectInCycle = 0; // Resetear contador de correctas
-                    questionsAnsweredInCycle = 0; // Resetear contador de respondidas
-                    loadLevelQuestionsForCurrentLevel(); // Cargar preguntas del nuevo nivel
-                    console.log(`NIVEL: ¡Subiendo a Nivel ${level}! Velocidad: ${gameSpeed}. Nuevas preguntas cargadas: ${currentLevelQuestions.length}.`);
-                } else {
-                    console.log("NIVEL: ¡Has completado todos los niveles o no hay más preguntas para este grado! Llamando a showGameOver(true).");
-                    showGameOver(true, "victoria"); // Ganaste el juego
-                    return; // Detener la ejecución
-                }
-            }
-
-            // Lógica para presentar una nueva pregunta
             if (shouldPresentNewQuestion) {
-                console.log(`PREGUNTAS: shouldPresentNewQuestion es true. Preguntas restantes en currentLevelQuestions (antes de seleccionar): ${currentLevelQuestions.length}`);
-                if (currentLevelQuestions.length === 0) {
-                    // Si no quedan preguntas en el nivel actual, terminar el juego
-                    console.log(`JUEGO: No quedan más preguntas en el nivel actual (${level}) para este grado. Fin del juego por agotamiento.`);
-                    showGameOver(false, "agotamiento de preguntas"); // Game Over si no hay más preguntas
-                    return;
-                }
+                shouldPresentNewQuestion = false; // Resetear la bandera
+                currentQuestionDisplay.innerText = "Preparando nueva pregunta...";
 
-                // Seleccionar una pregunta aleatoria y eliminarla de las disponibles para este ciclo de nivel
-                const randomIndex = Math.floor(Math.random() * currentLevelQuestions.length);
-                currentQuestion = currentLevelQuestions.splice(randomIndex, 1)[0];
-                console.log(`PREGUNTAS: Pregunta seleccionada: "${currentQuestion.texto}" (Nivel ${level}). Preguntas restantes en este nivel (después de eliminar): ${currentLevelQuestions.length}`);
-
-                // Mostrar la pregunta en la superposición y abajo del juego
-                overlayQuestionText.innerText = `Nivel ${level}: ${currentQuestion.texto}`;
-                currentQuestionDisplay.innerText = `Nivel ${level}: ${currentQuestion.texto}`;
-
-                // Mostrar la superposición de pregunta
-                questionOverlay.style.display = "flex";
-                questionOverlay.classList.remove('slide-out');
-                questionOverlay.style.transform = 'translate(-50%, -50%)';
-                questionOverlay.style.opacity = '1';
-
-                let timeLeft = 6; // Tiempo para leer la pregunta (Cambiado a 6 segundos)
-                overlayTimerText.innerText = `Tiempo para leer: ${timeLeft}`;
-                clearInterval(overlayQuestionTimer); // Limpiar cualquier temporizador anterior
-                overlayQuestionTimer = setInterval(() => {
-                    timeLeft--;
-                    overlayTimerText.innerText = `Tiempo para leer: ${timeLeft}`;
-                    if (timeLeft <= 0) {
-                        clearInterval(overlayQuestionTimer);
-                        questionOverlay.classList.add('slide-out'); // Iniciar animación de salida
-                        setTimeout(() => {
-                            questionOverlay.style.display = "none";
-                            shouldPresentNewQuestion = false; // Indicar que la pregunta ya fue presentada
-                            console.log("TEMPORIZADOR: Temporizador de pregunta terminado. shouldPresentNewQuestion ahora es false. Llamando a resumeGame().");
-                            resumeGame(); // Reanudar el juego una vez que la superposición se oculta
-                        }, 500); // Esperar a que termine la animación
+                setTimeout(() => {
+                    if (questionsAnsweredInCycle >= QUESTIONS_TO_LEVEL_UP) {
+                        console.log("NIVEL: Intentando subir de nivel...");
+                        if (level < Object.keys(selectedGradeQuestions).length) {
+                            levelUp();
+                        } else {
+                            // Si ya está en el último nivel y ha respondido suficientes preguntas
+                            endGame(true); // Victoria
+                            return;
+                        }
                     }
-                }, 1000);
-
-                // Generar nuevas posiciones para la manzana y el ratón
-                generateBothFoods();
-            } else {
-                console.log("FLUJO: checkAndPresentQuestion() llamado sin shouldPresentNewQuestion true. Solo reanudando juego.");
-                resumeGame();
+                    // La llamada a presentQuestion ahora maneja la pausa y reanudación del juego
+                    presentQuestion(); // Presentar la siguiente pregunta o reiniciar el nivel si no hay más
+                }, 1000); // Pequeña pausa antes de la siguiente pregunta
             }
         }
 
-        function generateBothFoods() {
-            food = randomPosition(); // Generar posición para la manzana
-            let ratPos;
-            do {
-                ratPos = randomPosition();
-            } while (ratPos.x === food.x && ratPos.y === food.y); // Asegurarse de que no esté en la misma posición que la manzana
-            rat = ratPos;
-            console.log("ALIMENTOS: Alimentos generados: Manzana en", food, "Ratón en", rat);
+        function levelUp() {
+            level++;
+            gameSpeed = Math.max(50, gameSpeed - 25); // Acelerar, mínimo 50ms
+            targetFrameRate = 1000 / (1000 / gameSpeed); // Recalcular targetFrameRate
+            levelDisplay.innerText = "Nivel: " + level;
+            questionsCorrectInCycle = 0; // Reiniciar contador para el nuevo nivel
+            questionsAnsweredInCycle = 0; // Reiniciar contador para el nuevo nivel
+            console.log(`NIVEL: ¡Subiste al Nivel ${level}! Velocidad: ${gameSpeed}ms.`);
+            loadLevelQuestionsForCurrentLevel();
+            currentQuestionDisplay.innerText = `¡Nivel ${level} alcanzado!`;
+            // Esta pregunta se mostrará en el currentQuestionDisplay, y luego la siguiente pregunta se mostrará en el overlay
+            setTimeout(() => {
+                currentQuestionDisplay.innerText = "";
+            }, 1000);
         }
 
-        function resumeGame() {
-            console.log("--- FLUJO: Reanudando Juego ---");
-            gamePausedForQuestion = false; // Permitir que el juego avance
-            // Asegurarse de que la serpiente tenga una dirección inicial si no la tiene
-            if (direction === null) {
-                direction = "RIGHT"; // Por defecto, que empiece a la derecha
-                console.log("DIRECCIÓN: Dirección establecida a RIGHT como respaldo al reanudar.");
+        // --- BUCLE PRINCIPAL DEL JUEGO (requestAnimationFrame) ---
+        function gameLoop(currentTime) {
+            animationFrameId = requestAnimationFrame(gameLoop);
+
+            // Controla la velocidad del juego. Solo dibuja y actualiza si ha pasado suficiente tiempo.
+            const elapsed = currentTime - lastFrameTime;
+            if (elapsed < targetFrameRate) {
+                return;
+            }
+            lastFrameTime = currentTime - (elapsed % targetFrameRate); // Ajusta lastFrameTime para una mayor precisión
+
+            if (gamePausedForQuestion) {
+                return; // No hacer nada si el juego está pausado
             }
 
-            console.log("ESTADO: Juego reanudado. gamePausedForQuestion:", gamePausedForQuestion, "Dirección actual:", direction, "Velocidad:", gameSpeed);
-            clearInterval(gameInterval); // Limpiar cualquier intervalo previo para evitar múltiples ejecuciones
-            gameInterval = setInterval(draw, gameSpeed); // Iniciar el bucle principal del juego
-            console.log("LOOP: setInterval(draw, gameSpeed) iniciado.");
+            draw();
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar el canvas en cada fotograma
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Dibujar la serpiente
             for (let i = 0; i < snake.length; i++) {
                 ctx.fillStyle = i === 0 ? "lime" : "green";
+                ctx.strokeStyle = "darkgreen";
                 ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
             }
 
-            // --- DIBUJAR MANZANA ---
+            // Dibujar la "Manzana" (círculo rojo)
             if (food.x !== undefined) {
-                // Puedes usar una imagen o dibujarla con formas
-                ctx.fillStyle = "red"; // Color rojo para la manzana
+                ctx.fillStyle = "red";
                 ctx.beginPath();
-                ctx.arc(food.x + box / 2, food.y + box / 2, box / 2, 0, Math.PI * 2);
+                ctx.arc(food.x + box / 2, food.y + box / 2, box / 2 - 2, 0, Math.PI * 2); // Un poco más pequeño
                 ctx.fill();
-                // O si usas imagen: ctx.drawImage(manzanaImg, food.x, food.y, box, box);
             }
 
-            // --- DIBUJAR RATÓN ---
+            // Dibujar el "Ratón" (cuadrado gris)
             if (rat.x !== undefined) {
-                // Puedes usar una imagen o dibujarlo con formas
-                ctx.fillStyle = "gray"; // Color gris para el ratón
-                ctx.fillRect(rat.x, rat.y, box, box);
-                // O si usas imagen: ctx.drawImage(ratonImg, rat.x, rat.y, box, box);
+                ctx.fillStyle = "gray";
+                ctx.fillRect(rat.x + 2, rat.y + 2, box - 4, box - 4); // Un poco más pequeño
             }
 
-            // Mover la cabeza de la serpiente
-            let headX = snake[0].x;
-            let headY = snake[0].y;
+            // Mover la serpiente
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
 
-            if (!gamePausedForQuestion && direction !== null) { // Solo mover si el juego no está pausado y hay dirección
-                if (direction === "LEFT") headX -= box;
-                else if (direction === "UP") headY -= box;
-                else if (direction === "RIGHT") headX += box;
-                else if (direction === "DOWN") headY += box;
-
-                const newHead = { x: headX, y: headY };
-
-                // Lógica de colisión con el propio cuerpo o paredes
-                let bodyCollision = false;
-                let willEatFood = (newHead.x === food.x && newHead.y === food.y) || (newHead.x === rat.x && newHead.y === rat.y);
-
-                // Si va a comer, no consideres la última parte del cuerpo para la colisión
-                // porque esa parte se moverá. Si no va a comer, sí la consideras.
-                if (willEatFood) {
-                    bodyCollision = collision(newHead, snake, true); // Comprueba con todo el cuerpo, incluyendo la cabeza
-                } else {
-                    const snakeBodyForCollision = snake.slice(0, snake.length - 1); // Quita el último segmento
-                    bodyCollision = collision(newHead, snakeBodyForCollision); // Comprueba con el resto del cuerpo
+            // Procesar el siguiente movimiento en la cola
+            if (moveQueue.length > 0) {
+                // Eliminar movimientos que resultarían en un giro de 180 grados
+                while (moveQueue.length > 0 && direction !== null &&
+                       ((moveQueue[0] === 'LEFT' && direction === 'RIGHT') ||
+                        (moveQueue[0] === 'RIGHT' && direction === 'LEFT') ||
+                        (moveQueue[0] === 'UP' && direction === 'DOWN') ||
+                        (moveQueue[0] === 'DOWN' && direction === 'UP'))) {
+                    moveQueue.shift(); // Eliminar el movimiento no válido
                 }
-
-                if (
-                    newHead.x < 0 ||
-                    newHead.x >= canvas.width ||
-                    newHead.y < 0 ||
-                    newHead.y >= canvas.height ||
-                    bodyCollision
-                ) {
-                    console.error("JUEGO: ¡GAME OVER! Razón: Colisión con pared o cuerpo. Nueva cabeza:", newHead, "Serpiente actual:", snake);
-                    showGameOver(false, "colision"); // Llama a la pantalla de Game Over
-                    return; // Detener el bucle del juego
+                if (moveQueue.length > 0) {
+                    direction = moveQueue.shift(); // Tomar el primer movimiento válido
                 }
+            }
 
-                // Lógica de comer comida
-                if (willEatFood) {
-                    let foodTypeEaten;
-                    // Determinar qué tipo de "comida" fue consumida ANTES de vaciar los objetos
-                    if (newHead.x === food.x && newHead.y === food.y) {
-                        foodTypeEaten = 'manzana';
-                    } else if (newHead.x === rat.x && newHead.y === rat.y) {
-                        foodTypeEaten = 'raton';
-                    }
 
-                    food = {}; // Vaciar la posición de la manzana
-                    rat = {}; // Vaciar la posición del ratón
+            if (direction === "LEFT") snakeX -= box;
+            if (direction === "UP") snakeY -= box;
+            if (direction === "RIGHT") snakeX += box;
+            if (direction === "DOWN") snakeY += box;
 
-                    let isCorrectAnswer = false;
-                    // Verificar si la respuesta es correcta
-                    if (currentQuestion.respuesta === true && foodTypeEaten === 'manzana') {
-                        isCorrectAnswer = true;
-                    } else if (currentQuestion.respuesta === false && foodTypeEaten === 'raton') {
-                        isCorrectAnswer = true;
-                    }
+            let newHead = { x: snakeX, y: snakeY };
 
-                    if (isCorrectAnswer) {
-                        score++; // Incrementar puntaje
-                        questionsCorrectInCycle++; // Incrementar contador de respuestas correctas en el ciclo
-                        console.log(`RESPUESTA: ¡Correcta! Puntaje: ${score}, Correctas en ciclo: ${questionsCorrectInCycle}.`);
-                    } else {
-                        // Si la respuesta es incorrecta, aquí puedes añadir una penalización, por ejemplo
-                        // score = Math.max(0, score - 1); // Restar puntos, pero no menos de 0
-                        console.log(`RESPUESTA: ¡Incorrecta!`);
-                    }
+            // Comprobar colisiones
+            if (
+                snakeX < 0 ||
+                snakeX >= canvas.width ||
+                snakeY < 0 ||
+                snakeY >= canvas.height ||
+                collision(newHead, snake)
+            ) {
+                endGame(false);
+                return;
+            }
 
-                    // Añadir la nueva cabeza. El segmento "extra" se mantiene
-                    snake.unshift(newHead);
-                    segmentsToAdd += 1; // Un segmento adicional que se añadirá en la próxima iteración
+            snake.unshift(newHead); // Añadir nueva cabeza
 
-                    questionsAnsweredInCycle++; // Incrementar el contador de preguntas respondidas
-                    console.log(`PREGUNTA: Preguntas respondidas en ciclo: ${questionsAnsweredInCycle}. Largo serpiente: ${snake.length + segmentsToAdd}`);
+            // Comprobar si come comida
+            let eaten = false;
+            if (newHead.x === food.x && newHead.y === food.y) {
+                checkAnswer(true); // Ha comido la manzana (Verdadero)
+                eaten = true;
+            } else if (newHead.x === rat.x && newHead.y === rat.y) {
+                checkAnswer(false); // Ha comido el ratón (Falso)
+                eaten = true;
+            }
 
-                    scoreDisplay.innerText = "Puntaje: " + score; // Actualizar el display de puntaje
-
-                    shouldPresentNewQuestion = true; // Indicar que se debe presentar una nueva pregunta
-                    console.log(`FLUJO: Comida consumida. shouldPresentNewQuestion es true. Llamando a checkAndPresentQuestion().`);
-                    checkAndPresentQuestion(); // Pausar el juego para la siguiente pregunta
-                    return; // Detener el bucle actual para esperar la pregunta
-                } else {
-                    // Si no comió, solo mueve la serpiente (elimina la cola si no hay segmentos que añadir)
-                    if (segmentsToAdd <= 0) {
-                        snake.pop(); // Eliminar el último segmento para que la serpiente se mueva
-                    } else {
-                        segmentsToAdd--; // Si hay segmentos por añadir, decrementa el contador
-                    }
-                }
-
-                snake.unshift(newHead); // Añadir la nueva cabeza
+            if (!eaten && segmentsToAdd <= 0) {
+                snake.pop(); // Eliminar cola si no come y no hay segmentos para añadir
+            } else if (segmentsToAdd > 0) {
+                segmentsToAdd--; // Reducir los segmentos a añadir
             }
         }
 
-        // --- MANEJO DE DIRECCIÓN (para teclado y táctil) ---
-        function setSnakeDirection(newDir) {
-            // Si el juego está pausado por la pantalla de inicio, solo captura la primera dirección para empezar
-            if (gamePausedForQuestion) {
-                if (initialKeyPressHandlerRegistered) { // Asegurarse de que es el inicio del juego
-                    handleGameStartFromInput(newDir); // Llamar a la función que inicia el juego
-                    return;
+
+        function setSnakeDirection(eventOrDir) {
+            let newDirection;
+            if (typeof eventOrDir === 'string') { // Viene de un botón táctil
+                newDirection = eventOrDir;
+            } else { // Viene de un evento de teclado
+                switch (eventOrDir.keyCode) {
+                    case 37:
+                        newDirection = "LEFT";
+                        break;
+                    case 38:
+                        newDirection = "UP";
+                        break;
+                    case 39:
+                        newDirection = "RIGHT";
+                        break;
+                    case 40:
+                        newDirection = "DOWN";
+                        break;
+                    default:
+                        return; // Ignorar otras teclas
                 }
-                console.log(`INPUT: Dirección "${newDir}" ignorada. Juego pausado por pregunta.`);
-                return; // Ignorar input si está en pausa por pregunta activa
             }
 
-            // Lógica para cambiar la dirección de la serpiente (evitar giros en U)
-            if (direction !== null) { // Asegurarse de que ya hay una dirección establecida
-                if (newDir === "LEFT" && direction !== "RIGHT") {
-                    direction = "LEFT";
-                } else if (newDir === "UP" && direction !== "DOWN") {
-                    direction = "UP";
-                } else if (newDir === "RIGHT" && direction !== "LEFT") {
-                    direction = "RIGHT";
-                } else if (newDir === "DOWN" && direction !== "UP") {
-                    direction = "DOWN";
+            // Prevenir giro de 180 grados si el juego ya está en movimiento
+            if (direction !== null &&
+                ((newDirection === "LEFT" && direction === "RIGHT") ||
+                 (newDirection === "RIGHT" && direction === "LEFT") ||
+                 (newDirection === "UP" && direction === "DOWN") ||
+                 (newDirection === "DOWN" && direction === "UP"))) {
+                console.log("DIRECCIÓN: Intento de giro de 180 grados ignorado.");
+                return;
+            }
+
+            // Si el juego aún no ha empezado a moverse (dirección es null), establece la primera dirección
+            if (direction === null) {
+                direction = newDirection;
+                // NOTA: La llamada a startAnimationFrameLoop y presentQuestion
+                // ahora se maneja en handleGameStartFromInput.
+            } else {
+                // Añadir el movimiento a la cola si no es un giro de 180 grados y no es el mismo que el último en cola
+                if (moveQueue.length === 0 || moveQueue[moveQueue.length - 1] !== newDirection) {
+                    moveQueue.push(newDirection);
                 }
-            } else { // Para la primera dirección después de una pausa sin dirección definida
-                direction = newDir;
-                console.log("INPUT: Primera dirección establecida en juego activo:", direction);
             }
         }
 
-        // Listener de teclado (llama a setSnakeDirection)
-        document.addEventListener("keydown", (event) => {
-            if (event.key.startsWith("Arrow")) {
-                setSnakeDirection(event.key.replace('Arrow', '').toUpperCase());
-            }
-        });
 
-        // Listeners para los botones táctiles (llaman a setSnakeDirection)
-        if (upButton) upButton.addEventListener('click', () => setSnakeDirection('UP'));
-        if (downButton) downButton.addEventListener('click', () => setSnakeDirection('DOWN'));
-        if (leftButton) leftButton.addEventListener('click', () => setSnakeDirection('LEFT'));
-        if (rightButton) rightButton.addEventListener('click', () => setSnakeDirection('RIGHT'));
-
-        // --- PANTALLA DE GAME OVER / JUEGO COMPLETADO ---
-        function showGameOver(isVictory, reason = "desconocido") {
-            console.log(`--- JUEGO: Mostrando Pantalla Game Over (Victoria: ${isVictory}, Razón: ${reason}) ---`);
-            clearInterval(gameInterval); // Detener el bucle del juego
-            clearInterval(overlayQuestionTimer); // Detener cualquier temporizador de pregunta
+        // --- CONTROL DE GAME OVER / VICTORIA ---
+        function endGame(isVictory) {
+            stopAnimationFrameLoop(); // Detener el bucle del juego
+            clearInterval(overlayQuestionTimerInterval); // Detener el temporizador de la pregunta
             gamePausedForQuestion = true; // Asegurarse de que el juego esté en pausa
             gameOverScreen.style.display = "flex"; // Mostrar la pantalla de Game Over
             currentQuestionDisplay.innerText = ""; // Limpiar la pregunta mostrada
@@ -1034,11 +1096,40 @@
             }
         }
 
-        // --- EVENTO DE REINICIO ---
+        // --- INICIAR / DETENER BUCLE requestAnimationFrame ---
+        function startAnimationFrameLoop() {
+            if (!animationFrameId) { // Solo iniciar si no está ya activo
+                lastFrameTime = performance.now(); // Reiniciar el tiempo para evitar saltos
+                animationFrameId = requestAnimationFrame(gameLoop);
+                console.log("ANIMACIÓN: Bucle requestAnimationFrame iniciado.");
+            }
+        }
+
+        function stopAnimationFrameLoop() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                console.log("ANIMACIÓN: Bucle requestAnimationFrame detenido.");
+            }
+        }
+
+        // --- EVENTO DE REINICIO ---\
         restartButton.addEventListener("click", initGame);
 
-        // --- INICIAR LA PANTALLA DE INICIO AL CARGAR LA PÁGINA ---
+        // --- MANEJADORES DE EVENTOS DE TECLADO Y TÁCTILES ---
+        document.addEventListener("keydown", setSnakeDirection);
+
+        upButton.addEventListener('click', () => setSnakeDirection('UP'), { passive: true });
+        downButton.addEventListener('click', () => setSnakeDirection('DOWN'), { passive: true });
+        leftButton.addEventListener('click', () => setSnakeDirection('LEFT'), { passive: true });
+        rightButton.addEventListener('click', () => setSnakeDirection('RIGHT'), { passive: true });
+
+        console.log("EVENTOS: Listeners de teclado y táctiles para dirección de serpiente configurados.");
+
+
+        // --- INICIAR LA PANTALLA DE INICIO AL CARGAR LA PÁGINA ---\
         window.onload = showStartScreen;
+
     </script>
 </body>
 </html>
