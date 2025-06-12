@@ -2,12 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a1a">
     <title>Serpiente Sabia 2D</title>
     <style>
         body {
             color: white;
-            font-family: 'Press Start 2P', cursive; /* Fuente pixelada para estilo retro */
+            font-family: 'Courier New', monospace, sans-serif; /* Fuente pixelada para estilo retro */
             text-align: center;
             background-color: #1a1a1a; /* Fondo oscuro */
             display: flex;
@@ -15,16 +18,23 @@
             align-items: center;
             justify-content: flex-start; /* Alinea los elementos al inicio (arriba) */
             min-height: 100vh; /* Ocupa el 100% de la altura de la ventana */
+            min-height: 100dvh; /* Dynamic viewport height para móviles */
             margin: 0;
             overflow: hidden; /* Ocultamos el scroll */
             padding: 5px 0; /* Pequeño padding para que el contenido no toque los bordes */
             box-sizing: border-box; /* Incluir padding en la altura total */
             /* ¡Solución recomendada! */
             touch-action: none; /* Fuerza al navegador a no interpretar gestos como zoom o scroll en todo el body */
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Standard */
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
         }
         h1 {
             color: #00ff00; /* Verde neón para el título */
-            font-size: 1.6em; /* Un poco más pequeño */
+            font-size: clamp(1.2em, 4vw, 1.6em); /* Responsive font size */
             margin-top: 5px; /* Margen superior muy reducido */
             margin-bottom: 5px;
         }
@@ -33,8 +43,14 @@
             border: 2px solid #00ff00; /* Borde verde neón */
             display: block;
             margin: 5px auto; /* Margen vertical muy reducido */
+            max-width: 95vw; /* Responsive width */
+            max-height: 60vh; /* Responsive height */
             /* ¡Solución recomendada! */
             touch-action: none; /* Fuerza al navegador a no interpretar gestos como zoom o scroll en el canvas */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         #game-header { /* Contenedor superior para instrucciones, puntaje y nivel */
             display: flex;
@@ -98,7 +114,7 @@
             color: white;
             margin-bottom: 15px;
             text-align: center;
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Courier New', monospace, sans-serif;
             max-width: 250px;
         }
         #start-screen button {
@@ -110,7 +126,7 @@
             cursor: pointer;
             border-radius: 5px;
             transition: background-color 0.3s;
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Courier New', monospace, sans-serif;
         }
         #start-screen button:hover {
             background-color: #00cc00;
@@ -139,13 +155,13 @@
             -moz-user-select: none;
         }
         #initial-instructions-overlay p {
-            margin-bottom: 15px;
-            line-height: 1.4;
+            margin-bottom: 8px;
+            line-height: 1.3;
         }
         #initial-instructions-overlay .instructions-title {
-            font-size: 1.4em;
+            font-size: 1.3em;
             color: #00ff00;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
         }
         #initial-instructions-overlay .instructions-cta {
             font-size: 1.2em;
@@ -159,7 +175,7 @@
             font-size: 1em; /* Ajustado al pedido */
             border: none;
             padding: 10px 20px; /* Ajustado al pedido */
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Courier New', monospace, sans-serif;
             cursor: pointer;
             margin-top: 20px;
             border-radius: 5px; /* Mantener bordes redondeados para estilo */
@@ -277,16 +293,16 @@
 
     <div id="initial-instructions-overlay">
         <p class="instructions-title">Instrucciones del Juego</p>
-        <p>Mueve la serpiente usando las **flechas del teclado** o **deslizando el dedo** en la pantalla.</p>
-        <p>Cuando aparezca una pregunta en el centro de la pantalla, busca la respuesta:</p>
-        <p>Come el **círculo rojo** si la respuesta es **Verdadero**.</p>
-        <p>Come el **cuadrado gris** si la respuesta es **Falso**.</p>
-        <p>Responde correctamente para aumentar tu puntaje y crecer. ¡Evita chocar contra las paredes o tu propio cuerpo!</p>
+        <p>Mueve la serpiente con las **flechas del teclado** (PC) o **deslizando el dedo** en cualquier parte de la pantalla (móvil).</p>
+        <p>Cuando aparezca una pregunta, busca la respuesta:</p>
+        <p>• **Círculo rojo** = Verdadero</p>
+        <p>• **Cuadrado gris** = Falso</p>
+        <p>Responde bien para crecer. ¡Evita chocar!</p>
         <button id="begin-game-button">Toca aquí para empezar</button>
     </div>
 
     <div id="game-header">
-        <p id="instructions">Come el **círculo rojo** (Verdadero) o el **cuadrado gris** (Falso).</p>
+        <p id="instructions">Desliza el dedo para mover. Come el **círculo rojo** (Verdadero) o el **cuadrado gris** (Falso).</p>
         <div id="score-level-bar">
             <p id="student-name-display"></p> <p id="score">Puntaje: 0</p>
             <p id="level">Nivel: 1</p>
@@ -574,7 +590,8 @@
         // Variables para detección de gestos táctiles
         let touchStartX = 0;
         let touchStartY = 0;
-        const SWIPE_THRESHOLD = 20;
+        const SWIPE_THRESHOLD = 15; // Reducido para respuesta más rápida
+        let touchStartTime = 0;
 
         // Variables para detección de gestos con el mouse (para PC sin touch)
         let mouseIsDown = false;
@@ -625,11 +642,28 @@
             return false;
         }
 
+        // --- FUNCIÓN PARA AJUSTAR TAMAÑO DEL CANVAS EN MÓVILES ---
+        function adjustCanvasSize() {
+            const maxWidth = Math.min(400, window.innerWidth * 0.95);
+            const maxHeight = Math.min(400, window.innerHeight * 0.6);
+
+            // Mantener proporción cuadrada
+            const size = Math.min(maxWidth, maxHeight);
+
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+
+            // Mantener la resolución interna del canvas
+            canvas.width = 400;
+            canvas.height = 400;
+        }
+
         // --- INICIALIZACIÓN DEL JUEGO ---
         function initGame() {
             console.log("--- INICIO: Iniciando Juego ---");
             stopAnimationFrameLoop();
             clearInterval(overlayQuestionTimerInterval);
+            adjustCanvasSize();
 
             const selectedGrade = gradeSelection.value;
             selectedGradeQuestions = {};
@@ -697,7 +731,6 @@
             studentNameInput.removeEventListener('keypress', handleNameInputKeyPress);
 
             // AÑADIDO: Limpiar listeners del botón de inicio del overlay por si acaso
-            beginGameButton.removeEventListener("touchstart", handleBeginGameButtonClickTouch);
             beginGameButton.removeEventListener("click", startActualGame);
 
             startGameButton.addEventListener('click', handleStartGameButtonClick);
@@ -724,20 +757,13 @@
             initialInstructionsOverlay.style.display = "flex"; // Mostrar instrucciones
 
             // AHORA: El botón dentro del overlay de instrucciones es el que inicia el juego
-            beginGameButton.removeEventListener("touchstart", handleBeginGameButtonClickTouch); // Limpiar para evitar duplicados
             beginGameButton.removeEventListener("click", startActualGame); // Limpiar para evitar duplicados
 
-            // Listener para touchstart con preventDefault
-            beginGameButton.addEventListener("touchstart", handleBeginGameButtonClickTouch, { passive: false });
-            // Listener para click (fallback para desktop o si touchstart no se dispara por alguna razón)
+            // Usar solo click event que funciona tanto en desktop como móvil
             beginGameButton.addEventListener("click", startActualGame);
         }
 
-        function handleBeginGameButtonClickTouch(e) {
-            e.preventDefault(); // Evita doble toque en iOS
-            console.log("EVENTO: touchstart en begin-game-button. Llamando a startActualGame.");
-            startActualGame();
-        }
+        
 
         function startActualGame() {
             console.log("INICIO: startActualGame llamado. Iniciando juego...");
@@ -1077,26 +1103,69 @@
             setSnakeDirection(newDirection);
         });
 
-        // Manejadores de eventos táctiles para gestos (en canvas)
-        canvas.addEventListener('touchstart', (e) => {
-            // Siempre prevenir el default en touchstart en el canvas para evitar scroll/zoom
-            // si el juego está activo o si se desea manejar el gesto.
-            if (!gamePausedForQuestion) { // Solo si el juego NO está pausado por la pregunta
-                e.preventDefault(); 
+        // --- Modified to listen to touch events on the body ---
+        document.body.addEventListener('touchstart', (e) => {
+            // Don't prevent default for buttons and interactive elements
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                return;
             }
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (!gamePausedForQuestion) { // Solo si el juego NO está pausado por la pregunta
-                e.preventDefault(); 
+            // Always prevent default touch events to avoid scroll/zoom
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
             }
         }, { passive: false });
 
-        canvas.addEventListener('touchend', (e) => {
-            if (gamePausedForQuestion) return; // Si el juego está pausado, ignorar gestos
+        document.body.addEventListener('touchmove', (e) => {
+            // Don't prevent default for buttons and interactive elements
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                return;
+            }
+            
+            // Solo prevenir scroll si el juego está activo
+            if (!gamePausedForQuestion) {
+                e.preventDefault();
+                
+                // Detección de swipe durante el movimiento para respuesta más rápida
+                if (e.touches.length > 0) {
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+                    const deltaX = currentX - touchStartX;
+                    const deltaY = currentY - touchStartY;
+                    const timeDiff = Date.now() - touchStartTime;
+                    
+                    // Si el movimiento es suficiente y rápido, procesar inmediatamente
+                    if (timeDiff < 200 && (Math.abs(deltaX) > SWIPE_THRESHOLD || Math.abs(deltaY) > SWIPE_THRESHOLD)) {
+                        let newDirection = null;
+                        
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            newDirection = deltaX > 0 ? 'RIGHT' : 'LEFT';
+                        } else {
+                            newDirection = deltaY > 0 ? 'DOWN' : 'UP';
+                        }
+                        
+                        if (newDirection) {
+                            setSnakeDirection(newDirection);
+                            console.log("EVENTO: Gesto táctil rápido detectado:", newDirection);
+                            // Resetear para evitar múltiples detecciones
+                            touchStartTime = 0;
+                        }
+                    }
+                }
+            }
+        }, { passive: false });
+
+        document.body.addEventListener('touchend', (e) => {
+            // Don't prevent default for buttons and interactive elements
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                return;
+            }
+            e.preventDefault();
+            if (gamePausedForQuestion) return;
             if (e.changedTouches.length === 0) return;
+            if (touchStartTime === 0) return; // Ya fue procesado en touchmove
 
             const touchEndX = e.changedTouches[0].clientX;
             const touchEndY = e.changedTouches[0].clientY;
@@ -1106,6 +1175,7 @@
 
             let newDirection = null;
 
+            // Umbral reducido para respuesta más rápida
             if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
                 newDirection = deltaX > 0 ? 'RIGHT' : 'LEFT';
             } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD) {
@@ -1118,9 +1188,22 @@
             }
         }, { passive: false });
 
-        // Manejadores de eventos de Mouse (para computadores sin pantalla táctil o cuando se usa el mouse)
-        // Estos listeners solo se activan si isMobile es false.
-        canvas.addEventListener('mousedown', (e) => {
+        // Prevent zoom gestures with multiple touches
+        document.body.addEventListener('gesturestart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.body.addEventListener('gesturechange', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        document.body.addEventListener('gestureend', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Mouse event handlers (for computers without touch screens or when using the mouse)
+        // These listeners are only activated if isMobile is false.
+        document.body.addEventListener('mousedown', (e) => {
             if (isMobile || gamePausedForQuestion) return;
             mouseIsDown = true;
             mouseStartX = e.clientX;
@@ -1128,12 +1211,12 @@
             e.preventDefault();
         });
 
-        canvas.addEventListener('mouseup', (e) => {
+        document.body.addEventListener('mouseup', (e) => {
             if (!mouseIsDown || isMobile || gamePausedForQuestion) return;
             mouseIsDown = false;
 
             const mouseEndX = e.clientX;
-            const mouseEndY = e.changedTouches[0].clientY;
+            const mouseEndY = e.clientY;
 
             const deltaX = mouseEndX - mouseStartX;
             const deltaY = mouseEndY - mouseStartY;
@@ -1152,14 +1235,28 @@
             e.preventDefault();
         });
 
-        canvas.addEventListener('mousemove', (e) => {
+        document.body.addEventListener('mousemove', (e) => {
             if (!mouseIsDown || isMobile || gamePausedForQuestion) return;
             e.preventDefault();
         });
 
+        // --- MANEJAR REDIMENSIONAMIENTO DE VENTANA ---
+        window.addEventListener('resize', () => {
+            adjustCanvasSize();
+        });
+
+        // Manejar cambios de orientación en móviles
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                adjustCanvasSize();
+            }, 100);
+        });
 
         // --- INICIAR LA PANTALLA DE INICIO AL CARGAR LA PÁGINA ---
-        window.onload = showStartScreen;
+        window.onload = () => {
+            adjustCanvasSize();
+            showStartScreen();
+        };
 
     </script>
 </body>
