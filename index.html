@@ -651,7 +651,7 @@
             food = {};
             rat = {};
             gamePausedForQuestion = true;
-            
+
             scoreDisplay.innerText = "Puntaje: " + score;
             levelDisplay.innerText = "Nivel: " + level;
             gameOverScreen.style.display = "none";
@@ -666,9 +666,9 @@
             initialInstructionsOverlay.style.display = "none"; // Asegurarse de ocultarlo
             canvas.style.display = "block";
             currentQuestionDisplay.style.display = "block";
-            
+
             drawInitialState();
-            
+
             loadLevelQuestionsForCurrentLevel();
             presentQuestion();
             console.log("INICIO: initGame finalizado. Esperando primera pregunta para iniciar bucle.");
@@ -691,7 +691,7 @@
             initialInstructionsOverlay.style.display = "none";
             currentQuestionDisplay.style.display = "none";
             gameOverScreen.style.display = "none";
-            
+
             // Limpiar listeners antiguos para evitar duplicados
             startGameButton.removeEventListener('click', handleStartGameButtonClick);
             studentNameInput.removeEventListener('keypress', handleNameInputKeyPress);
@@ -718,7 +718,7 @@
                 return;
             }
             studentName = name; // Guardar el nombre
-            
+
             console.log("ESTADO: Mostrando overlay de instrucciones iniciales.");
             startScreen.style.display = "none"; // Ocultar pantalla de inicio
             initialInstructionsOverlay.style.display = "flex"; // Mostrar instrucciones
@@ -726,7 +726,7 @@
             // AHORA: El botón dentro del overlay de instrucciones es el que inicia el juego
             beginGameButton.removeEventListener("touchstart", handleBeginGameButtonClickTouch); // Limpiar para evitar duplicados
             beginGameButton.removeEventListener("click", startActualGame); // Limpiar para evitar duplicados
-            
+
             // Listener para touchstart con preventDefault
             beginGameButton.addEventListener("touchstart", handleBeginGameButtonClickTouch, { passive: false });
             // Listener para click (fallback para desktop o si touchstart no se dispara por alguna razón)
@@ -832,7 +832,6 @@
                 segmentsToAdd += 2; // CAMBIO: AHORA SUMA 2 SEGMENTOS EN LUGAR DE 1
                 console.log("RESPUESTA: ¡Correcto! Puntaje:", score);
             } else {
-                score = Math.max(0, score - 5);
                 segmentsToAdd = Math.max(0, segmentsToAdd - 1);
                 console.log("RESPUESTA: Incorrecto. Puntaje:", score);
             }
@@ -852,6 +851,8 @@
             shouldPresentNewQuestion = true;
             checkAndPresentQuestion();
         }
+
+        let shouldPresentNewQuestion = false;
 
         function checkAndPresentQuestion() {
             if (shouldPresentNewQuestion) {
@@ -881,12 +882,14 @@
             levelDisplay.innerText = "Nivel: " + level;
             questionsCorrectInCycle = 0;
             questionsAnsweredInCycle = 0;
+            shouldPresentNewQuestion = false;
             console.log(`NIVEL: ¡Subiste al Nivel ${level}! Velocidad: ${gameSpeed}ms.`);
             loadLevelQuestionsForCurrentLevel();
             currentQuestionDisplay.innerText = `¡Nivel ${level} alcanzado!`;
             setTimeout(() => {
                 currentQuestionDisplay.innerText = "";
-            }, 1000);
+                presentQuestion();
+            }, 1500);
         }
 
         // --- BUCLE PRINCIPAL DEL JUEGO (requestAnimationFrame) ---
@@ -979,6 +982,11 @@
             } else if (segmentsToAdd > 0) {
                 segmentsToAdd--;
             }
+
+            // Si no hay comida disponible y el juego no está pausado por pregunta, continuar movimiento
+            if (food.x === undefined && rat.x === undefined && !gamePausedForQuestion) {
+                // Continuar el juego normalmente sin comida hasta que se presente nueva pregunta
+            }
         }
 
 
@@ -987,7 +995,7 @@
             if (gamePausedForQuestion) {
                  return;
             }
-            
+
             // Si la dirección es null (primer movimiento al inicio del juego), la establece directamente
             if (direction === null) {
                 direction = newDirection;
